@@ -22,6 +22,7 @@
                 "https://gemini.google.com/*"
             ],
             "js": [
+                "lib/pako.min.js",
                 "content.js"
             ],
             "css": [

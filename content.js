@@ -674,7 +674,7 @@
       };
 
       // 压缩和编码
-      const encoded = await compressAndEncode(shareData);
+      const encoded = compressAndEncode(shareData);
 
       if (!encoded) {
         showToast('生成链接失败');
@@ -702,12 +702,7 @@
     }
   }
 
-  async function compressAndEncode(data) {
-    // 动态加载 pako
-    if (typeof pako === 'undefined') {
-      await loadPako();
-    }
-
+  function compressAndEncode(data) {
     const jsonStr = JSON.stringify(data);
 
     // 使用 pako 压缩
@@ -722,21 +717,6 @@
 
     // URL-safe 编码
     return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  }
-
-  function loadPako() {
-    return new Promise((resolve, reject) => {
-      if (typeof pako !== 'undefined') {
-        resolve();
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js';
-      script.onload = resolve;
-      script.onerror = () => reject(new Error('无法加载压缩库'));
-      document.head.appendChild(script);
-    });
   }
 
   function showShareModal(url) {
