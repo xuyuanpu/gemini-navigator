@@ -1,0 +1,277 @@
+/* Gemini Navigator - 样式文件 */
+
+/* ===== 目录面板 ===== */
+#gemini-nav-panel {
+  position: fixed;
+  top: 120px;
+  right: 20px;
+  width: 280px;
+  max-height: calc(100vh - 180px);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(10px);
+  z-index: 10000;
+  overflow: hidden;
+  font-family: 'Google Sans', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#gemini-nav-panel:hover {
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 深色模式 */
+@media (prefers-color-scheme: dark) {
+  #gemini-nav-panel {
+    background: linear-gradient(135deg, rgba(32, 33, 36, 0.95) 0%, rgba(41, 42, 45, 0.95) 100%);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* 面板头部 */
+.gemini-nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  background: linear-gradient(135deg, #4285f4 0%, #5e97f6 100%);
+  color: white;
+}
+
+.gemini-nav-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gemini-nav-header h3::before {
+  content: '📑';
+  font-size: 16px;
+}
+
+/* 按钮容器 */
+.gemini-header-btns {
+  display: flex;
+  gap: 8px;
+}
+
+/* 导出/分享按钮 */
+.gemini-export-btn,
+.gemini-share-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 16px;
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.gemini-export-btn:hover,
+.gemini-share-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px);
+}
+
+.gemini-export-btn:active,
+.gemini-share-btn:active {
+  transform: translateY(0);
+}
+
+.gemini-share-btn::before {
+  content: '🔗';
+  font-size: 12px;
+}
+
+.gemini-export-btn::before {
+  content: '📄';
+  font-size: 12px;
+}
+
+/* 目录列表 */
+.gemini-nav-list {
+  max-height: calc(100vh - 260px);
+  overflow-y: auto;
+  padding: 12px 0;
+}
+
+.gemini-nav-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.gemini-nav-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.gemini-nav-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+}
+
+.gemini-nav-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+/* 目录项 */
+.gemini-nav-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 18px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent;
+}
+
+.gemini-nav-item:hover {
+  background: rgba(66, 133, 244, 0.08);
+  border-left-color: #4285f4;
+}
+
+.gemini-nav-item.active {
+  background: rgba(66, 133, 244, 0.12);
+  border-left-color: #4285f4;
+}
+
+.gemini-nav-item-number {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #4285f4 0%, #5e97f6 100%);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 50%;
+}
+
+.gemini-nav-item-text {
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #3c4043;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+@media (prefers-color-scheme: dark) {
+  .gemini-nav-item-text {
+    color: #e8eaed;
+  }
+
+  .gemini-nav-item:hover {
+    background: rgba(138, 180, 248, 0.12);
+  }
+}
+
+/* 空状态 */
+.gemini-nav-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: #9aa0a6;
+  font-size: 13px;
+}
+
+.gemini-nav-empty::before {
+  content: '💬';
+  display: block;
+  font-size: 32px;
+  margin-bottom: 12px;
+  opacity: 0.6;
+}
+
+/* 折叠按钮 */
+.gemini-nav-toggle {
+  position: fixed;
+  top: 120px;
+  right: 20px;
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #4285f4 0%, #5e97f6 100%);
+  border: none;
+  border-radius: 50%;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(66, 133, 244, 0.4);
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.gemini-nav-toggle:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 24px rgba(66, 133, 244, 0.5);
+}
+
+.gemini-nav-toggle.hidden {
+  display: none;
+}
+
+#gemini-nav-panel.collapsed {
+  transform: translateX(calc(100% + 40px));
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 加载动画 */
+.gemini-nav-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.gemini-nav-loading::after {
+  content: '';
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(66, 133, 244, 0.2);
+  border-top-color: #4285f4;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Toast 通知 */
+.gemini-toast {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  padding: 14px 24px;
+  background: #323232;
+  color: white;
+  border-radius: 8px;
+  font-size: 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  z-index: 10002;
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.gemini-toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}

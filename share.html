@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini 对话分享</title>
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #1a73e8;
+            --bg-color: #f8f9fa;
+            --card-bg: #fff;
+            --text-main: #202124;
+            --text-secondary: #5f6368;
+            --border-color: #dadce0;
+            --user-bg: #e8f0fe;
+            --user-border: #d2e3fc;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+        }
+
+        .doc-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .doc-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin: 0 0 10px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .doc-meta {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .dialogue-turn {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            margin-bottom: 20px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .turn-header {
+            background: #f8f9fa;
+            padding: 10px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .user-message {
+            background: var(--user-bg);
+            padding: 16px;
+            border-bottom: 1px solid var(--user-border);
+        }
+
+        .ai-message {
+            background: var(--card-bg);
+            padding: 16px;
+        }
+
+        .message-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .user-message .message-label {
+            color: #1967d2;
+        }
+
+        .message-content {
+            font-size: 15px;
+            word-wrap: break-word;
+        }
+
+        /* Markdown Styles */
+        .markdown-body h1,
+        .markdown-body h2,
+        .markdown-body h3 {
+            margin-top: 20px;
+            margin-bottom: 12px;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+
+        .markdown-body p {
+            margin-bottom: 12px;
+        }
+
+        .markdown-body ul,
+        .markdown-body ol {
+            padding-left: 24px;
+            margin-bottom: 12px;
+        }
+
+        .markdown-body li {
+            margin-bottom: 6px;
+        }
+
+        .markdown-body blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 10px 16px;
+            margin: 12px 0;
+            background: #f8f9fa;
+            color: #4d5156;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .markdown-body code {
+            background: #f1f3f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'SF Mono', Consolas, monospace;
+            font-size: 90%;
+            color: #d93025;
+        }
+
+        .markdown-body pre {
+            background: #202124;
+            color: #e8eaed;
+            padding: 14px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 12px 0;
+        }
+
+        .markdown-body pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+            font-size: 13px;
+        }
+
+        .markdown-body table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+            display: block;
+            overflow-x: auto;
+        }
+
+        .markdown-body th,
+        .markdown-body td {
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            text-align: left;
+        }
+
+        .markdown-body th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+
+        .markdown-body tr:nth-child(even) {
+            background: #fcfcfc;
+        }
+
+        .error-container {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .error-container .icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(66, 133, 244, 0.2);
+            border-top-color: #4285f4;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #9aa0a6;
+            font-size: 12px;
+        }
+
+        /* 响应式 */
+        @media (max-width: 600px) {
+            body {
+                padding: 12px;
+            }
+
+            .doc-title {
+                font-size: 20px;
+            }
+
+            .dialogue-turn {
+                border-radius: 8px;
+            }
+
+            .user-message,
+            .ai-message {
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <div class="loading">正在加载对话内容...</div>
+    </div>
+
+    <script>
+        (function () {
+            'use strict';
+
+            const app = document.getElementById('app');
+
+            function showError(message) {
+                app.innerHTML = `
+          <div class="error-container">
+            <div class="icon">😕</div>
+            <h2>无法加载对话</h2>
+            <p>${message}</p>
+          </div>
+        `;
+            }
+
+            function renderDialogues(data) {
+                const { dialogues, exportTime, title } = data;
+
+                const dialoguesHTML = dialogues.map(d => `
+          <div class="dialogue-turn">
+            <div class="turn-header">第 ${d.index} 轮对话</div>
+            
+            ${d.userHTML ? `
+            <div class="user-message">
+              <div class="message-label">
+                <span class="icon">👤</span>
+                <span class="role">用户提问</span>
+              </div>
+              <div class="message-content user-content">${d.userHTML}</div>
+            </div>
+            ` : ''}
+            
+            ${d.aiHTML ? `
+            <div class="ai-message">
+              <div class="message-label">
+                <span class="icon">✨</span>
+                <span class="role">Gemini 回复</span>
+              </div>
+              <div class="message-content ai-content markdown-body">${d.aiHTML}</div>
+            </div>
+            ` : ''}
+          </div>
+        `).join('');
+
+                app.innerHTML = `
+          <div class="doc-header">
+            <h1 class="doc-title">
+              <span style="font-size: 28px">✨</span> 
+              ${title || 'Gemini 对话分享'}
+            </h1>
+            <div class="doc-meta">
+              ${exportTime ? `分享时间: ${exportTime} &nbsp;|&nbsp; ` : ''}
+              共 ${dialogues.length} 轮对话
+            </div>
+          </div>
+          
+          ${dialoguesHTML}
+          
+          <div class="footer">
+            由 Gemini Navigator 生成
+          </div>
+        `;
+            }
+
+            function decodeData(encoded) {
+                try {
+                    // URL-safe Base64 解码
+                    const base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+                    const padding = '='.repeat((4 - base64.length % 4) % 4);
+                    const binaryStr = atob(base64 + padding);
+
+                    // 转为 Uint8Array
+                    const bytes = new Uint8Array(binaryStr.length);
+                    for (let i = 0; i < binaryStr.length; i++) {
+                        bytes[i] = binaryStr.charCodeAt(i);
+                    }
+
+                    // 解压
+                    const decompressed = pako.inflate(bytes, { to: 'string' });
+
+                    // 解析 JSON
+                    return JSON.parse(decompressed);
+                } catch (e) {
+                    console.error('Decode error:', e);
+                    throw new Error('数据解码失败，链接可能已损坏');
+                }
+            }
+
+            function init() {
+                const hash = window.location.hash.slice(1);
+
+                if (!hash) {
+                    showError('链接中没有对话数据');
+                    return;
+                }
+
+                try {
+                    const data = decodeData(hash);
+
+                    if (!data || !data.dialogues || data.dialogues.length === 0) {
+                        showError('对话数据为空');
+                        return;
+                    }
+
+                    renderDialogues(data);
+                } catch (e) {
+                    showError(e.message || '加载失败');
+                }
+            }
+
+            // 等待 pako 加载完成
+            if (typeof pako !== 'undefined') {
+                init();
+            } else {
+                window.addEventListener('load', init);
+            }
+        })();
+    </script>
+</body>
+
+</html>
