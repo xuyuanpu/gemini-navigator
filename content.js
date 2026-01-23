@@ -136,7 +136,63 @@
       element.querySelectorAll(selector).forEach(el => el.remove());
     });
 
+    // 额外处理：将 pre 标签内的代码块保护起来，避免丢失换行
+    element.querySelectorAll('pre').forEach(pre => {
+      const code = pre.querySelector('code');
+      if (code) {
+        // 简单处理，保持结构
+      }
+    });
+
     return element;
+  }
+
+  /**
+   * 提取更精简的 Markdown 风格内容
+   * 用于分享到 URL
+   */
+  function extractCompactContent(element) {
+    if (!element) return '';
+
+    // 复制一份以便操作
+    const clone = element.cloneNode(true);
+    cleanupHTML(clone);
+
+    // 这是一个非常精简的处理逻辑
+    // 目标是保留标题、列表、代码块结构，但去掉冗余标签
+
+    let text = clone.innerHTML;
+
+    // 1. 处理代码块
+    // <pre><code>...</code></pre> -> ```\n...\n```
+    text = text.replace(/<pre[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>/gi, (match, code) => {
+      // 解码 HTML 实体
+      const temp = document.createElement('div');
+      temp.innerHTML = code;
+      return '\n```\n' + temp.textContent + '\n```\n';
+    });
+
+    // 2. 处理标题
+    text = text.replace(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi, (match, level, content) => {
+      return '\n' + '#'.repeat(level) + ' ' + content.replace(/<[^>]+>/g, '') + '\n';
+    });
+
+    // 3. 处理列表项
+    text = text.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (match, content) => {
+      return '\n* ' + content.replace(/<[^>]+>/g, '');
+    });
+
+    // 4. 处理换行
+    text = text.replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, '\n$1\n');
+    text = text.replace(/<br\s*\/?>/gi, '\n');
+
+    // 5. 去掉剩余所有标签
+    text = text.replace(/<[^>]+>/g, '');
+
+    // 6. 解码实体并清理空白
+    const decoder = document.createElement('div');
+    decoder.innerHTML = text;
+    return decoder.textContent.trim().replace(/\n{3,}/g, '\n\n');
   }
 
   function scanConversations() {
@@ -658,19 +714,37 @@
     try {
       await delay(100);
 
-      const dialogues = collectStructuredDialogues();
+      const dialogues = [];
+      const containers = getConversationContainers();
 
-      if (!dialogues || dialogues.length === 0) {
+      containers.forEach((container, index) => {
+        const userQueryEl = container.querySelector('div.query-text') ||
+          container.querySelector('div.query-content') ||
+          container.querySelector('user-query');
+
+        const aiResponseEl = container.querySelector('div.markdown.markdown-main-panel') ||
+          container.querySelector('message-content');
+
+        if (userQueryEl || aiResponseEl) {
+          dialogues.push({
+            i: index + 1,
+            u: userQueryEl ? userQueryEl.textContent.trim() : '',
+            a: extractCompactContent(aiResponseEl)
+          });
+        }
+      });
+
+      if (dialogues.length === 0) {
         showToast('未找到对话内容');
         isExporting = false;
         return;
       }
 
-      // 构建分享数据
+      // 构建分享数据 (使用更短的键名)
       const shareData = {
-        dialogues: dialogues,
-        exportTime: new Date().toLocaleString('zh-CN'),
-        title: 'Gemini 对话分享'
+        d: dialogues, // dialogues
+        t: new Date().toLocaleDateString('zh-CN'), // time
+        v: '2.0' // version key to identify compact format
       };
 
       // 压缩和编码
