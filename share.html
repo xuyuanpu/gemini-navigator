@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gemini 对话分享</title>
+    <!-- 引入 pako 和 marked -->
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
-    <!-- 添加极简 Markdown 解析支持 -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         :root {
@@ -84,7 +84,7 @@
             background: var(--card-bg);
             border: 1px solid var(--border-color);
             border-top-left-radius: 4px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
         }
 
         .role-label {
@@ -98,7 +98,9 @@
             color: var(--text-secondary);
         }
 
-        .user-message .role-label { color: #1a73e8; }
+        .user-message .role-label {
+            color: #1a73e8;
+        }
 
         .message-content {
             font-size: 15px;
@@ -106,10 +108,10 @@
             word-wrap: break-word;
         }
 
-        /* Markdown 解析后的样式 */
         .markdown-body {
             font-size: 15px;
         }
+
         .markdown-body pre {
             background: #1e1e1e;
             color: #d4d4d4;
@@ -120,18 +122,29 @@
             font-family: 'SF Mono', Consolas, monospace;
             font-size: 13px;
         }
+
         .markdown-body code {
-            background: rgba(0,0,0,0.05);
+            background: rgba(0, 0, 0, 0.05);
             padding: 2px 4px;
             border-radius: 4px;
             font-size: 90%;
         }
+
         .markdown-body pre code {
             background: transparent;
             padding: 0;
         }
-        .markdown-body p { margin-bottom: 12px; }
-        .markdown-body ul, .markdown-body ol { margin-left: 20px; margin-bottom: 12px; }
+
+        .markdown-body p {
+            margin-bottom: 12px;
+        }
+
+        .markdown-body ul,
+        .markdown-body ol {
+            margin-left: 20px;
+            margin-bottom: 12px;
+        }
+
         .markdown-body blockquote {
             border-left: 4px solid #dadce0;
             padding-left: 16px;
@@ -160,8 +173,13 @@
         }
 
         @media (max-width: 600px) {
-            body { padding: 15px; }
-            .message-bubble { padding: 12px 16px; }
+            body {
+                padding: 15px;
+            }
+
+            .message-bubble {
+                padding: 12px 16px;
+            }
         }
     </style>
 </head>
@@ -170,6 +188,9 @@
     <div id="app">
         <div class="loading">正在准备对话内容...</div>
     </div>
+
+    <!-- 配置文件 -->
+    <script src="config.js"></script>
 
     <script>
         (function () {
@@ -182,21 +203,20 @@
                     <div class="error-container">
                         <h2 style="color:#d93025">无法加载内容</h2>
                         <p style="margin-top:10px; color:#5f6368">${message}</p>
+                        <button onclick="location.reload()" style="margin-top:20px; padding:8px 16px; border-radius:4px; border:1px solid #ccc; cursor:pointer;">重试</button>
                     </div>
                 `;
             }
 
             function renderDialogues(data) {
-                // 处理新旧两种格式
-                const isNewFormat = data.v === '2.0';
+                const isNewFormat = data.v === '2.0' || data.v === '3.0';
                 const dialogues = isNewFormat ? data.d : data.dialogues;
                 const exportTime = isNewFormat ? data.t : data.exportTime;
-                
+
                 const dialoguesHTML = dialogues.map(d => {
                     const userContent = isNewFormat ? d.u : d.userHTML;
                     const aiContent = isNewFormat ? d.a : d.aiHTML;
-                    const index = isNewFormat ? d.i : d.index;
-                    
+
                     return `
                         <div class="dialogue-turn">
                             ${userContent ? `
@@ -230,12 +250,30 @@
                     </div>
                     
                     <div class="footer">
-                        Powered by Gemini Navigator · 由用户本地加密生成
+                        Powered by Gemini Navigator · 此内容由 COS 安全托管
                     </div>
                 `;
             }
 
+            async function fetchData(fileId) {
+                if (!window.COS_CONFIG) {
+                    throw new Error('未找到配置文件 config.js');
+                }
+                const { Bucket, Region } = window.COS_CONFIG;
+                const url = `https://${Bucket}.cos.${Region}.myqcloud.com/shares/${fileId}`;
+
+                const response = await fetch(url);
+                if (!response.ok) {
+                    if (response.status === 403) throw new Error('COS 权限拒绝，请检查 Bucket 是否设置为公有读');
+                    if (response.status === 404) throw new Error('对话不存在或已被删除');
+                    throw new Error(`加载失败 (${response.status})`);
+                }
+
+                return await response.json();
+            }
+
             function decodeData(encoded) {
+                // 原有的 Hash 解码逻辑，用于兼容旧版本
                 try {
                     const base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
                     const padding = '='.repeat((4 - base64.length % 4) % 4);
@@ -247,22 +285,29 @@
                     const decompressed = pako.inflate(bytes, { to: 'string' });
                     return JSON.parse(decompressed);
                 } catch (e) {
-                    console.error(e);
-                    throw new Error('数据解码失败');
+                    throw new Error('旧版数据解码失败');
                 }
             }
 
-            function init() {
+            async function init() {
+                const params = new URLSearchParams(window.location.search);
+                const fileId = params.get('id');
                 const hash = window.location.hash.slice(1);
-                if (!hash) {
-                    showError('链接缺少数据参数');
-                    return;
-                }
+
                 try {
-                    const data = decodeData(hash);
-                    renderDialogues(data);
+                    if (fileId) {
+                        // 优先尝试从 COS 加载 (URL ?id=...)
+                        const data = await fetchData(fileId);
+                        renderDialogues(data);
+                    } else if (hash) {
+                        // 兼容旧版 URL 编码 (URL #hash)
+                        const data = decodeData(hash);
+                        renderDialogues(data);
+                    } else {
+                        showError('链接缺少数据参数');
+                    }
                 } catch (e) {
-                    showError('加载失败，可能内容过大或链接不完整');
+                    showError(e.message || '加载失败');
                 }
             }
 

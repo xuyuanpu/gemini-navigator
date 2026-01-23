@@ -709,7 +709,7 @@
     }
 
     isExporting = true;
-    showToast('正在生成分享链接...');
+    showToast('正在准备对话数据...');
 
     try {
       await delay(100);
@@ -740,34 +740,38 @@
         return;
       }
 
-      // 构建分享数据 (使用更短的键名)
       const shareData = {
-        d: dialogues, // dialogues
-        t: new Date().toLocaleDateString('zh-CN'), // time
-        v: '2.0' // version key to identify compact format
+        d: dialogues,
+        t: new Date().toLocaleString('zh-CN'),
+        v: '3.0' // Version 3.0 for COS
       };
 
-      // 压缩和编码
-      const encoded = compressAndEncode(shareData);
+      showToast('正在上传到云端...');
 
-      if (!encoded) {
-        showToast('生成链接失败');
+      // 生成随机文件名
+      const fileName = `gemini_${Date.now()}_${Math.random().toString(36).substr(2, 5)}.json`;
+
+      // 发送给 background.js 处理上传
+      chrome.runtime.sendMessage({
+        action: 'uploadToCOS',
+        data: shareData,
+        filename: fileName
+      }, (response) => {
         isExporting = false;
-        return;
-      }
 
-      // 检查 URL 长度
-      const shareUrl = `${SHARE_PAGE_URL}#${encoded}`;
+        if (chrome.runtime.lastError) {
+          showToast('上传失败: ' + chrome.runtime.lastError.message);
+          return;
+        }
 
-      if (shareUrl.length > 8000) {
-        showToast('对话内容过长，无法生成分享链接');
-        isExporting = false;
-        return;
-      }
-
-      // 显示分享弹窗
-      showShareModal(shareUrl);
-      isExporting = false;
+        if (response.success) {
+          // 构建分享链接，指向 share.html 并携带文件 ID
+          const shareUrl = `${SHARE_PAGE_URL}?id=${fileName}`;
+          showShareModal(shareUrl);
+        } else {
+          showToast('分享失败: ' + (response.error || '未知错误'));
+        }
+      });
 
     } catch (error) {
       console.error('分享失败:', error);
@@ -813,7 +817,7 @@
             <input type="text" readonly value="${url}" class="gemini-share-url-input">
             <button class="gemini-copy-btn">复制</button>
           </div>
-          <p class="gemini-share-tip">💡 链接有效期：永久（无需服务器存储）</p>
+          <p class="gemini-share-tip">💡 链接已通过腾讯云安全存储，支持超长对话</p>
         </div>
       </div>
     `;
